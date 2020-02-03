@@ -15,4 +15,4 @@ foo@bar:~$ conda env create -f environment.yml
 ```
 
 # License
-MIT @ [Meghan Thommes](meghanthommes.com)
+MIT @ [Meghan Thommes](https://meghanthommes.com/)
