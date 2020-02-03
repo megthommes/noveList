@@ -7,7 +7,7 @@ My project for [Insight Boston](http://www.insightboston.org/) Health Data Scien
 # Built With
 - Python
 - [streamlit](https://www.streamlit.io/)
-- [Heroku](www.heroku.com)
+- [Heroku](https://www.heroku.com)
 
 Dependencies can be found in the environment.yml file, and this file can be used to create a conda environment with
 ```console
