@@ -5,11 +5,9 @@ channels:
 dependencies:
 - python=3.7.4
 - conda=4.8.1
-- jupyter=1.0.0
 - scikit-surprise=1.1.0
 - pandas=0.25.3
 - numpy=1.18.1
-- matplotlib=3.1.1
 - pip=19.3.1
 - pip:
   - streamlit==0.54.0
