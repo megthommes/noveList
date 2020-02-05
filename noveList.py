@@ -1,5 +1,5 @@
 import streamlit as st
-import os, sys, joblib, time
+import os, sys, joblib, time, surprise
 import importlib.util
 import pandas as pd
 import numpy as np
@@ -22,57 +22,82 @@ def format_url(s):
 	els = s.split("/")[-1].split(".")[0].split("_")
 	return " ".join(el for el in els).capitalize()
 
+# function to load book_id mappings and reviews
+# I would cach this, but it doesn't seem to work
+def load_data():
+	# book map
+	map_df = pd.read_csv(os.path.join(folder, 'data', 'book_id_map.csv'), dtype={'book_id_csv':int, 'book_id':int}, skipinitialspace=True)
+	book_map = dict([(v,k) for k,v in map_df.values]) # create mapping between book_id_csv and book_id
+	# reviews
+	reviews = joblib.load(os.path.join(folder, 'data', 'reviews.joblib'))
+	return book_map, reviews
+# load book_id mappings, user_id mappings, and reviews
+book_map, reviews = load_data()
+
+# function to upload Goodreads library export csv file
+def read_library_csv(file_name):
+	user_data = pd.read_csv(file_name, usecols=['Book Id','Title','Author','My Rating'])
+	return user_data
+
 # function to convert user input to read/to-read
-def parse_user_input(user_data):
-	# get book_id and rating
-	tmp_df = user_data[['Book Id','My Rating']].copy()
+def parse_user_input(user_data, book_map):
 	# rename columns
-	tmp_df = tmp_df.rename(columns={'Book Id':'book_id', 'My Rating':'rating'})
+	user_data = user_data.rename(columns={'Book Id':'book_id', 'My Rating':'rating'})
 	# convert book_id to book_id_csv
-	map_df = pd.read_csv(os.path.join(folder, 'data', 'book_id_map.csv'),
-						 dtype={'book_id_csv':int, 'book_id':int},
-						 skipinitialspace=True)
-	mapping = dict([(v,k) for k,v in map_df.values]) # create mapping between book_id_csv and book_id
-	tmp_df['book_id'] = tmp_df['book_id'].map(mapping)
+	user_data['book_id'] = user_data['book_id'].map(book_map)
 	# remove books not in mapping
-	tmp_df.drop(tmp_df[tmp_df['book_id'].isnull()].index, inplace=True)
+	user_data.drop(user_data[user_data['book_id'].isnull()].index, inplace=True)
 	# split into read and to-read
-	toread_df = tmp_df[tmp_df['rating'] == 0]
-	read_df = tmp_df[tmp_df['rating'] != 0]
-	return toread_df, read_df
+	toread_list = user_data[user_data['rating'] == 0]
+	read_list = user_data[user_data['rating'] != 0]
+	return toread_list, read_list
 
-# function to load model
-@st.cache
-def load_model():
-	# SVD Parameters
-	item_biases = joblib.load(os.path.join(folder, 'svd-params', 'item_biases.joblib'))
-	user_biases = joblib.load(os.path.join(folder, 'svd-params', 'user_biases.joblib'))
-	item_factors = joblib.load(os.path.join(folder, 'svd-params', 'item_factors.joblib'))
-	user_factors = joblib.load(os.path.join(folder, 'svd-params', 'user_factors.joblib'))
-	return global_mean, item_biases, user_biases, item_factors, user_factors
-
-# function to create model
-@st.cache
-def make_model():
-	global_mean, item_biases, user_biases, item_factors, user_factors = load_model()
-	new_user_biases = np.append(user_biases,0)
-	new_user_factors = np.vstack((user_factors,np.zeros(200)))
-	qTp = item_factors.dot(np.transpose(new_user_factors)) + global_mean
-	return item_bases, new_user_biases, qTp
+# function to train model
+def train_model(reviews_df):
+	# define rating scale
+	reader = surprise.Reader(rating_scale=(1, 5))
+	# column names to use in building the collaborative filtering models
+	col_names = ['book_id', 'user_id', 'rating']
+	# convert to dataset
+	reviews = surprise.Dataset.load_from_df(reviews_df[col_names], reader)
+	# build training set
+	trainingSet = reviews.build_full_trainset()
+	# baseline configuration
+	bsl_options = {'method': 'als',
+				   'reg_i': 5, # regularization term for item bias
+				   'reg_u': 10, # regularization item for user bias
+				   'n_epochs': 5} # number of iterations
+	# fit
+	model = surprise.prediction_algorithms.BaselineOnly(bsl_options=bsl_options, verbose=False)
+	model.fit(trainingSet);
+	return model
 
 # function to predict book ratings
-#def pred_ratings(toread_df):
-	
-	#book_pred
+def pred_ratings(model, reviews, toread_list, user_id=876145, k=10):
+	pred = dict()
+	for book_id in np.intersect1d(np.array(reviews['book_id']), np.array(toread_list['book_id'])):
+		pred[book_id] = model.predict(user_id, book_id).est
+	# convert to dataframe
+	pred_df = pd.DataFrame(pred.items(), columns=['book_id','est_rating'])
+	# only return top k
+	pred_df = pred_df[:k]
+	return pred_df
 
-# function for progress bar
-def progress_bar():
-	progress_bar = st.progress(0)
-	status_text = st.text('Working...')
-	for i in range(11):
-		progress_bar.progress(i*10)
-		time.sleep(0.1)
-	status_text.text('Done!')
+# function to predict top 10 books
+def top_ten(user_data, reviews, book_map, user_id=876145, k=10):
+	# add user_id
+	user_data['user_id'] = user_id
+	# split into read and to-read
+	toread_list, read_list = parse_user_input(user_data, book_map)
+	# add read books to reviews
+	reviews = reviews.append(read_list, sort=False)
+	# train model
+	model = train_model(reviews)
+	# predict book ratings
+	pred = pred_ratings(model, reviews, toread_list, user_id, k)
+	# convert book_id to title and author
+	top_ten = pd.merge(pred,toread_list, how='inner', on='book_id')
+	return top_ten
 
 # title and tagline
 st.markdown('<span style="font-family:verdana; font-size:36pt; font-style:bold;">NoveList</span><br><span style="font-family:verdana; font-size:24pt; font-style:italic;">Find your next page turner</span>', unsafe_allow_html=True)
@@ -95,26 +120,23 @@ if upload_flag == 'Yes': # upload file
 
 	if csv_file is not None:
 		# read csv file
-		user_data = pd.read_csv(csv_file)
-		# display uploaded file
+		user_data = read_library_csv(csv_file)
+		# display file
+		st.markdown('<span style="font-family:verdana; font-size:12pt;">Goodreads Library Export CSV File:</span>', unsafe_allow_html=True)
 		st.dataframe(user_data)
-		# parse uploaded file
-		toread_df, read_df = parse_user_input(user_data)
+		# predict top 10 books
+		top10_books = top_ten(user_data, reviews, book_map)
+		# show predictions
+		st.table(top10_books[['Title','Author']])
 
 elif upload_flag == 'No': # use saved file
 	st.markdown('<span style="font-family:verdana; font-size:16pt; font-style:bold;">Use a pre-generated Goodreads Library Export CSV file</span>', unsafe_allow_html=True)
 	# read csv file
-	user_data = pd.read_csv(os.path.join(folder, 'data', 'goodreads_library_export.csv'))
+	user_data = read_library_csv(os.path.join(folder, 'data', 'goodreads_library_export.csv'))
 	# display file
 	st.markdown('<span style="font-family:verdana; font-size:12pt;">Goodreads Library Export CSV File:</span>', unsafe_allow_html=True)
 	st.dataframe(user_data)
-	# parse uploaded file
-	toread_df, read_df = parse_user_input(user_data)
-	
-
-if st.button('Submit'): # run model
-	pred_ratings = user_data[['Title','Author','Average Rating']].copy()
-	pred_ratings = pred_ratings.rename(columns={'Average Rating':'Predicted Rating'})
-	st.dataframe(pred_ratings)
-
-	progress_bar()
+	# predict top 10 books
+	top10_books = top_ten(user_data, reviews, book_map)
+	# show predictions
+	st.table(top10_books[['Title','Author']])
