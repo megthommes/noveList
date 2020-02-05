@@ -23,7 +23,6 @@ def format_url(s):
 	return " ".join(el for el in els).capitalize()
 
 # function to load book_id mappings and reviews
-# I would cach this, but it doesn't seem to work
 def load_data():
 	# book map
 	map_df = pd.read_csv(os.path.join(folder, 'data', 'book_id_map.csv'), dtype={'book_id_csv':int, 'book_id':int}, skipinitialspace=True)
@@ -85,33 +84,35 @@ def pred_ratings(model, reviews, toread_list, user_id=876145, k=10):
 
 # function to predict top 10 books
 def top_ten(user_data, reviews, book_map, user_id=876145, k=10):
-	# add user_id
-	user_data['user_id'] = user_id
-	# split into read and to-read
-	toread_list, read_list = parse_user_input(user_data, book_map)
-	# add read books to reviews
-	reviews = reviews.append(read_list, sort=False)
-	# train model
-	model = train_model(reviews)
-	# predict book ratings
-	pred = pred_ratings(model, reviews, toread_list, user_id, k)
-	# convert book_id to title and author
-	top_ten = pd.merge(pred,toread_list, how='inner', on='book_id')
-	return top_ten
+	with st.spinner('Predicting top ten books...'):
+		# add user_id
+		user_data['user_id'] = user_id
+		# split into read and to-read
+		toread_list, read_list = parse_user_input(user_data, book_map)
+		# add read books to reviews
+		reviews = reviews.append(read_list, sort=False)
+		# train model
+		model = train_model(reviews)
+		# predict book ratings
+		pred = pred_ratings(model, reviews, toread_list, user_id, k)
+		# convert book_id to title and author
+		top_ten = pd.merge(pred,toread_list, how='inner', on='book_id')
+		return top_ten
 
 # title and tagline
 st.markdown('<span style="font-family:verdana; font-size:36pt; font-style:bold;">NoveList</span><br><span style="font-family:verdana; font-size:24pt; font-style:italic;">Find your next page turner</span>', unsafe_allow_html=True)
 
 # explain what this app does
-st.markdown('<span style="font-family:verdana; font-size:14pt;">This app predicts how you will rate your books in your "To-Read" list on [Goodreads](https://www.goodreads.com/)</span>', unsafe_allow_html=True)
+st.markdown('<span style="font-family:verdana; font-size:14pt;">This app predicts how you will rate your books in your "To-Read" list on [Goodreads](https://www.goodreads.com/)</span><br> <br> ', unsafe_allow_html=True)
+
 
 # inputs
 st.markdown('<span style="font-family:verdana; font-size:20pt;">Would you like to upload a CSV of your exported Goodreads library?</span>', unsafe_allow_html=True)
-upload_flag = st.radio('Upload a Goodreads Library Export CSV file?',
+upload_flag = st.radio('Upload your Goodreads data?',
 					  ('Yes','No'), index=0)
 
 if upload_flag == 'Yes': # upload file
-	st.markdown('<span style="font-family:verdana; font-size:16pt; font-style:bold;">To export your Goodreads library:</span>', unsafe_allow_html=True)
+	st.markdown('<br> <br> <span style="font-family:verdana; font-size:16pt; font-style:bold;">To export your Goodreads library:</span>', unsafe_allow_html=True)
 	# instructions on how to export Goodreads library
 	st.markdown('<span style="font-family:verdana; font-size:14pt;">1. Go to [My Books](https://www.goodreads.com/review/list), then click on [Import and Export](https://www.goodreads.com/review/import) under **Tools** on the bottom left.<br>2. Click on the **Export Library** button at the top of the Import/Export screen below the Export heading.<br>3. Wait for the file to generate (this may take some time if you have a large library). If successful, you will see a **Your export from (date) - (time)** note below the button. Click on that text to download the csv file.</span>', unsafe_allow_html=True)
 	# upload csv file
@@ -127,6 +128,7 @@ if upload_flag == 'Yes': # upload file
 		# predict top 10 books
 		top10_books = top_ten(user_data, reviews, book_map)
 		# show predictions
+		st.markdown('<br> <br> <span style="font-family:verdana; font-size:20pt; font-style:bold;">Your top ten books are:</span>', unsafe_allow_html=True)
 		st.table(top10_books[['Title','Author']])
 
 elif upload_flag == 'No': # use saved file
@@ -139,4 +141,5 @@ elif upload_flag == 'No': # use saved file
 	# predict top 10 books
 	top10_books = top_ten(user_data, reviews, book_map)
 	# show predictions
+	st.markdown('<br> <br> <span style="font-family:verdana; font-size:20pt; font-style:bold;">Your top ten books are:</span>', unsafe_allow_html=True)
 	st.table(top10_books[['Title','Author']])
