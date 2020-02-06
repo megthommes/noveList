@@ -1,5 +1,5 @@
 import streamlit as st
-import os, sys, joblib, time, surprise
+import os, sys, joblib, surprise
 import importlib.util
 import pandas as pd
 import numpy as np
@@ -22,6 +22,6 @@ def format_url(s):
 	els = s.split("/")[-1].split(".")[0].split("_")
 	return " ".join(el for el in els).capitalize()
 
-st.write(os.path.join(folder, 'data', 'reviews.joblib'))
-reviews = joblib.load(os.path.join(folder, 'data', 'reviews.joblib'))
+st.write(os.path.join(folder, 'data', 'ratings.joblib'))
+reviews = joblib.load(os.path.join(folder, 'data', 'ratings.joblib'))
 st.write(reviews.head(5))
