@@ -39,7 +39,9 @@ def read_library_csv(file_name):
 	return user_data
 
 # function to convert user input to read/to-read
-def parse_user_input(user_data, book_map):
+def parse_user_input(user_data, book_map, user_id=876145):
+	# add user_id
+	user_data['user_id'] = user_id
 	# rename columns
 	user_data = user_data.rename(columns={'Book Id':'book_id', 'My Rating':'rating'})
 	# convert book_id to book_id_csv
@@ -78,82 +80,112 @@ def pred_ratings(model, reviews, toread_list, user_id=876145, k=10):
 		pred[book_id] = model.predict(user_id, book_id).est
 	# convert to dataframe
 	pred_df = pd.DataFrame(pred.items(), columns=['book_id','est_rating'])
-	# only return top k
-	pred_df = pred_df[:k]
 	return pred_df
 
-# function to predict top k books
-def top_ten(user_data, reviews, book_map, user_id=876145, k=10):
-	with st.spinner('Predicting top books...'):
-		# add user_id
-		user_data['user_id'] = user_id
-		# split into read and to-read
-		toread_list, read_list = parse_user_input(user_data, book_map)
-		# number of books on the to-read list
-		n_toread = len(toread_list)
-		# if the number of to-read books is less than k, only sort those books
-		if (n_toread < k):
-			k = n_toread
-		if (n_toread < 2):
-			st.error('Must have at least two books to rank')
-		# number of books on the read list
-		n_read = len(read_list)
+# function to predict top k and bottom k books
+def ranked_books(toread_list, read_list, reviews, book_map, user_id=876145, k=10):
+	with st.spinner('Ranking books...'):
 		# add read books to reviews
 		reviews = reviews.append(read_list, sort=False)
 		# train model
 		model = train_model(reviews)
 		# predict book ratings
 		pred = pred_ratings(model, reviews, toread_list, user_id, k)
+		# top k
+		top_k = pred[:k]
+		# bottom k
+		n_bottom = len(toread_list) - k
+		if (n_bottom > 0) and (n_bottom >= k):
+			bottom_k = pred[-k:]
+		elif (n_bottom > 0) and (n_bottom < k):
+			bottom_k = pred[-n_bottom:]
+		else:
+			bottom_k = []
 		# convert book_id to title and author
-		top_ten = pd.merge(pred,toread_list, how='inner', on='book_id')
+		top_k = pd.merge(top_k,toread_list, how='inner', on='book_id')
+		bottom_k = pd.merge(bottom_k,toread_list, how='inner', on='book_id')
 	st.success('Done!')
-	return top_ten, k
+	return top_k, bottom_k, k
 
 # title and tagline
-st.markdown('<span style="font-size:36pt; font-style:bold;">NoveList</span><br><span style="font-size:24pt; font-style:italic;">Find your next page turner</span>', unsafe_allow_html=True)
+st.markdown('<span style="font-size:36pt;">**NoveList**</span><br><span style="font-size:24pt;">*Find your next page turner*</span>', unsafe_allow_html=True)
 
 # explain what this app does
-st.markdown('<span style="font-size:14pt;">This app predicts the top ten books in your "To-Read" list on [Goodreads](https://www.goodreads.com/)</span><br> <br> ', unsafe_allow_html=True)
+st.markdown('<span style="font-size:16pt;">This app ranks your "To-Read" books on [Goodreads](https://www.goodreads.com/)</span><br><br>', unsafe_allow_html=True)
 
 # sidebar
 # instructions on how to export Goodreads library
-st.sidebar.markdown('<span style="font-size:16pt; font-style:bold;">To export your Goodreads library:</span>', unsafe_allow_html=True)
-st.sidebar.markdown('<span style="font-size:14pt;">1. Go to [My Books](https://www.goodreads.com/review/list), then click on [Import and Export](https://www.goodreads.com/review/import) under **Tools** on the bottom left.<br>2. Click on the **Export Library** button at the top of the Import/Export screen below the Export heading.<br>3. Wait for the file to generate (this may take some time if you have a large library). If successful, you will see a **Your export from (date) - (time)** note below the button. Click on that text to download the csv file.</span>', unsafe_allow_html=True)
+st.sidebar.markdown('<span style="font-size:18pt; font-style:bold;">To export your Goodreads library:</span>', unsafe_allow_html=True)
+st.sidebar.markdown('<span style="font-size:16pt;">1. Go to [My Books](https://www.goodreads.com/review/list), then click on [Import and Export](https://www.goodreads.com/review/import) under **Tools** on the bottom left.<br>2. Click on the **Export Library** button at the top of the Import/Export screen below the Export heading.<br>3. Wait for the file to generate (this may take some time if you have a large library). If successful, you will see a **Your export from (date) - (time)** note below the button. Click on that text to download the csv file.</span>', unsafe_allow_html=True)
 
 # input
 st.markdown('<span style="font-size:20pt;">Would you like to upload a CSV of your exported Goodreads library?</span>', unsafe_allow_html=True)
 upload_flag = st.radio('Upload your Goodreads data?',
 					  ('Yes, upload my own Goodreads data','No, use pre-loaded data'), index=0)
 
+k = 10 # number of books to rank
 if upload_flag == 'Yes, upload my own Goodreads data': # upload file
 	# upload csv file
-	csv_file = st.file_uploader(label='Upload an exported Goodreads Library CSV file',
+	st.markdown('<br><span style="font-size:20pt; font-style:bold;">Upload your Goodreads library:</span>', unsafe_allow_html=True)
+	csv_file = st.file_uploader(label='Upload your exported Goodreads Library CSV file',
 								type=['csv'], encoding='utf-8')
 
 	if csv_file is not None:
 		# read csv file
 		user_data = read_library_csv(csv_file)
 		# display file
-		st.markdown('<span style="font-size:12pt;">Goodreads Library Export CSV File:</span>', unsafe_allow_html=True)
-		st.dataframe(user_data)
-		# predict top 10 books
-		topk_books, k = top_ten(user_data, reviews, book_map)
-		# show predictions
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(int(k)) + ' books are:</span>', unsafe_allow_html=True)
-		st.table(topk_books[['Title','Author']])
+		st.markdown('<span style="font-size:16pt;">Your Goodreads Library:</span>', unsafe_allow_html=True)
+		st.dataframe(user_data.style.set_properties(**{'text-align': 'left'}))
+		
+		# check input
+		# split into read and to-read
+		toread_list, read_list = parse_user_input(user_data, book_map)
+		# check how many books they've read and how many books they want to read
+		if (len(read_list) < 10):
+			st.error('Must have read at least 10 books to rank')
+		elif (len(toread_list) < 2):
+			st.error('Must want to read at least two books to rank')
+		else:
+			# click submit to run
+			if st.button('Submit'):
+				# if the number of to-read books is less than k, only sort those books
+				if (len(toread_list) < k):
+					k = len(toread_list)
+				# predict top k books
+				topk_books, bottomk_books, k = ranked_books(toread_list, read_list, reviews, book_map, k=k)
+				# show predictions
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(int(k)) + ' ranked books are:</span>', unsafe_allow_html=True)
+				st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
+				st.markdown('<span style="font-size:20pt; font-style:bold;">You have not read many books like these:</span>', unsafe_allow_html=True)
+				st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 
 elif upload_flag == 'No, use pre-loaded data': # use saved file
-	st.markdown('<span style="font-size:16pt; font-style:bold;">Use a pre-loaded Goodreads Library</span>', unsafe_allow_html=True)
-	# choose csv file
-	# TO-DO: list multiple different users
-	# generate a to-read list based on read date
+	# choose a profile
+	st.markdown('<br><span style="font-size:20pt; font-style:bold;">Choose a user profile:</span>', unsafe_allow_html=True)
+	user = st.selectbox('User profile',('User A', 'User B', 'User C'))
 	# read csv file
-	user_data = read_library_csv(os.path.join(folder, 'goodreads_library_export', 'user0.csv'))
+	if user=='User A':
+		user_data = read_library_csv(os.path.join(folder, 'goodreads_library_export', 'user0.csv'))
+	elif user=='User B':
+		user_data = read_library_csv(os.path.join(folder, 'goodreads_library_export', 'user1.csv'))
+	elif user=='User C':
+		user_data = read_library_csv(os.path.join(folder, 'goodreads_library_export', 'user2.csv'))
 	# display file
-	st.markdown('<span style="font-size:12pt;">Goodreads Library Export CSV File:</span>', unsafe_allow_html=True)
-	st.dataframe(user_data)
-	# predict top 10 books
-	topk_books, k = top_ten(user_data, reviews, book_map)
-	# show predictions
-	st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(int(k)) + ' books are:</span>', unsafe_allow_html=True)
-	st.table(topk_books[['Title','Author']])
+	st.markdown('<span style="font-size:16pt;">Pre-Loaded Goodreads Library:</span>', unsafe_allow_html=True)
+	st.dataframe(user_data.style.set_properties(**{'text-align': 'left'}))
+
+	# split into read and to-read
+	toread_list, read_list = parse_user_input(user_data, book_map)
+
+	# click submit to run
+	if st.button('Submit'):
+		# if the number of to-read books is less than k, only sort those books
+		if (len(toread_list) < k):
+			k = len(toread_list)
+		# predict top k books
+		topk_books, bottomk_books, k = ranked_books(toread_list, read_list, reviews, book_map, k=k)
+		# show predictions
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(int(k)) + ' ranked books are:</span>', unsafe_allow_html=True)
+		st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
+		st.markdown('<span style="font-size:20pt; font-style:bold;">You have not read many books like these:</span>', unsafe_allow_html=True)
+		st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
