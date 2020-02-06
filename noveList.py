@@ -28,7 +28,8 @@ def load_data():
 	map_df = pd.read_csv(os.path.join(folder, 'data', 'book_id_map.csv'), dtype={'book_id_csv':int, 'book_id':int}, skipinitialspace=True)
 	book_map = dict([(v,k) for k,v in map_df.values]) # create mapping between book_id_csv and book_id
 	# reviews
-	reviews = joblib.load(os.path.join(folder, 'data', 'reviews.joblib'))
+	file = open(os.path.join(folder, 'data', 'reviews.joblib'), 'rb')
+	reviews = joblib.load(file)
 	return book_map, reviews
 # load book_id mappings, user_id mappings, and reviews
 book_map, reviews = load_data()
