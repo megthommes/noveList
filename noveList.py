@@ -77,12 +77,10 @@ def train_model(reviews_df):
 
 # function to predict book ratings
 def pred_ratings(model, reviews, toread_list, user_id=876145, k=10):
-	pred = dict()
-	for book_id in np.intersect1d(np.array(reviews['book_id']), np.array(toread_list['book_id'])):
-		pred[book_id] = model.predict(user_id, book_id).est
-	# convert to dataframe
-	pred_df = pd.DataFrame(pred.items(), columns=['book_id','est_rating'])
-	return pred_df
+	pred = pd.DataFrame([model.predict(user_id, book_id).est for book_id in np.intersect1d(np.array(reviews['book_id']), np.array(toread_list['book_id']))])
+	pred['book_id'] = np.intersect1d(np.array(reviews['book_id']), np.array(toread_list['book_id']))
+	pred = pred.rename(columns={'0':'est_rating'})
+	return pred
 
 # function to predict top k and bottom k books
 def ranked_books(toread_list, read_list, reviews, book_map, user_id=876145, k=10):
@@ -191,3 +189,6 @@ elif upload_flag == 'No, use pre-loaded data': # use saved file
 		st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom ' + str(len(bottomk_books)) + ' ranked books are:</span>', unsafe_allow_html=True)
 		st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
+
+#
+st.markdown('<br><br><span style="font-size:12pt">Created by Meghan Thommes<br>Health Data Science Fellow, Insight Data Science | Boston, MA</style>', unsafe_allow_html=True)
