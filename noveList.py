@@ -36,6 +36,8 @@ book_map, reviews = load_data()
 # function to upload Goodreads library export csv file
 def read_library_csv(file_name):
 	user_data = pd.read_csv(file_name, usecols=['Book Id','Title','Author','My Rating','ISBN13','Exclusive Shelf'])
+	# rename columns
+	user_data = user_data.rename(columns={'Exclusive Shelf':'Shelf', 'My Rating':'Rating', 'Book Id':'Book ID'})
 	return user_data
 
 # function to convert user input to read/to-read
@@ -43,14 +45,14 @@ def parse_user_input(user_data, book_map, user_id=876145):
 	# add user_id
 	user_data['user_id'] = user_id
 	# rename columns
-	user_data = user_data.rename(columns={'Book Id':'book_id', 'My Rating':'rating'})
+	user_data = user_data.rename(columns={'Book ID':'book_id', 'Rating':'rating'})
 	# convert book_id to book_id_csv
 	user_data['book_id'] = user_data['book_id'].map(book_map)
 	# remove books not in mapping
 	user_data.drop(user_data[user_data['book_id'].isnull()].index, inplace=True)
 	# split into read and to-read
-	toread_list = user_data[user_data['Exclusive Shelf'] == 'to-read']
-	read_list = user_data[user_data['Exclusive Shelf'] == 'read']
+	toread_list = user_data[user_data['Shelf'] == 'to-read']
+	read_list = user_data[user_data['Shelf'] == 'read']
 	return toread_list, read_list
 
 # function to train model
@@ -105,7 +107,7 @@ def ranked_books(toread_list, read_list, reviews, book_map, user_id=876145, k=10
 		top_k = pd.merge(top_k,toread_list, how='inner', on='book_id')
 		bottom_k = pd.merge(bottom_k,toread_list, how='inner', on='book_id')
 	st.success('Done!')
-	return top_k, bottom_k, k
+	return top_k, bottom_k
 
 # title and tagline
 st.markdown('<span style="font-size:36pt;">**NoveList**</span><br><span style="font-size:24pt;">*Find your next page turner*</span>', unsafe_allow_html=True)
@@ -135,7 +137,7 @@ if upload_flag == 'Yes, upload my own Goodreads data': # upload file
 		user_data = read_library_csv(csv_file)
 		# display file
 		st.markdown('<span style="font-size:16pt;">Your Goodreads Library:</span>', unsafe_allow_html=True)
-		st.dataframe(user_data.style.set_properties(**{'text-align': 'left'}))
+		st.dataframe(user_data[['Title','Author','Rating','Shelf']].style.set_properties(**{'text-align': 'left'}))
 		
 		# check input
 		# split into read and to-read
@@ -154,9 +156,9 @@ if upload_flag == 'Yes, upload my own Goodreads data': # upload file
 				# predict top k books
 				topk_books, bottomk_books, k = ranked_books(toread_list, read_list, reviews, book_map, k=k)
 				# show predictions
-				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(int(k)) + ' ranked books are:</span>', unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + len(topk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
 				st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
-				st.markdown('<span style="font-size:20pt; font-style:bold;">You have not read many books like these:</span>', unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom ' + len(bottomk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
 				st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 
 elif upload_flag == 'No, use pre-loaded data': # use saved file
@@ -172,7 +174,7 @@ elif upload_flag == 'No, use pre-loaded data': # use saved file
 		user_data = read_library_csv(os.path.join(folder, 'goodreads_library_export', 'user2.csv'))
 	# display file
 	st.markdown('<span style="font-size:16pt;">Pre-Loaded Goodreads Library:</span>', unsafe_allow_html=True)
-	st.dataframe(user_data.style.set_properties(**{'text-align': 'left'}))
+	st.dataframe(user_data[['Title','Author','Rating','Shelf']].style.set_properties(**{'text-align': 'left'}))
 
 	# split into read and to-read
 	toread_list, read_list = parse_user_input(user_data, book_map)
@@ -183,9 +185,9 @@ elif upload_flag == 'No, use pre-loaded data': # use saved file
 		if (len(toread_list) < k):
 			k = len(toread_list)
 		# predict top k books
-		topk_books, bottomk_books, k = ranked_books(toread_list, read_list, reviews, book_map, k=k)
+		topk_books, bottomk_books = ranked_books(toread_list, read_list, reviews, book_map, k=k)
 		# show predictions
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(int(k)) + ' ranked books are:</span>', unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + len(topk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
 		st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
-		st.markdown('<span style="font-size:20pt; font-style:bold;">You have not read many books like these:</span>', unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom ' + len(bottomk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
 		st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
