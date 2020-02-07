@@ -1,0 +1,7 @@
+version: "3"
+services:
+  novelist:
+    container_name: novelist
+    image: megthommes/hair-cam:latest
+    ports:
+      - 8501:8501
