@@ -156,9 +156,9 @@ if upload_flag == 'Yes, upload my own Goodreads data': # upload file
 				# predict top k books
 				topk_books, bottomk_books, k = ranked_books(toread_list, read_list, reviews, book_map, k=k)
 				# show predictions
-				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + len(topk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(len(topk_books)) + ' ranked books are:</span>', unsafe_allow_html=True)
 				st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
-				st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom ' + len(bottomk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom ' + str(len(bottomk_books)) + ' ranked books are:</span>', unsafe_allow_html=True)
 				st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 
 elif upload_flag == 'No, use pre-loaded data': # use saved file
@@ -187,7 +187,7 @@ elif upload_flag == 'No, use pre-loaded data': # use saved file
 		# predict top k books
 		topk_books, bottomk_books = ranked_books(toread_list, read_list, reviews, book_map, k=k)
 		# show predictions
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + len(topk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top ' + str(len(topk_books)) + ' ranked books are:</span>', unsafe_allow_html=True)
 		st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom ' + len(bottomk_books) + ' ranked books are:</span>', unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom ' + str(len(bottomk_books)) + ' ranked books are:</span>', unsafe_allow_html=True)
 		st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
