@@ -1,5 +1,5 @@
 import streamlit as st
-import os, sys, joblib, surprise
+import os, sys, psycopg2, surprise
 import importlib.util
 import pandas as pd
 import numpy as np
@@ -22,16 +22,23 @@ def format_url(s):
 	els = s.split("/")[-1].split(".")[0].split("_")
 	return " ".join(el for el in els).capitalize()
 
-# function to load book_id mappings and reviews
-def load_data():
-	# book map
-	map_df = pd.read_csv(os.path.join(folder, 'data', 'book_id_map.csv'), dtype={'book_id_csv':int, 'book_id':int}, skipinitialspace=True)
-	book_map = dict([(v,k) for k,v in map_df.values]) # create mapping between book_id_csv and book_id
-	# reviews
-	reviews = joblib.load(os.path.join(folder, 'data', 'ratings.joblib'))
-	return book_map, reviews
-# load book_id mappings, user_id mappings, and reviews
-book_map, reviews = load_data()
+# function to load UCSD reviews
+def load_data(user_data):
+	# get list of user books
+	book_list = user_data['Book ID'].to_list()
+	# establish connection to server
+	DATABASE_URL = os.environ['DATABASE_URL']
+	con = psycopg2.connect(DATABASE_URL, sslmode='require')
+	# format sql query
+	sql_query = """
+	SELECT books.book_id_csv, users.user_id_csv, reviews.rating
+	FROM reviews
+	INNER JOIN books ON reviews.book_id=books.book_id
+	INNER JOIN users ON reviews.user_id=users.user_id
+	WHERE books.book_id_csv IN (%s)
+	""" % ",".join(str(x) for x in book_list)
+	reviews = pd.read_sql_query(sql_query, con)
+	return reviews
 
 # function to upload Goodreads library export csv file
 def read_library_csv(file_name):
@@ -146,6 +153,8 @@ if upload_flag == 'Yes, upload my own Goodreads data': # upload file
 		elif (len(toread_list) < 2):
 			st.error('Must want to read at least two books to rank')
 		else:
+			# get reviews data
+			reviews = load_data(user_data)
 			# click submit to run
 			if st.button('Submit'):
 				# if the number of to-read books is less than k, only sort those books
@@ -177,6 +186,8 @@ elif upload_flag == 'No, use pre-loaded data': # use saved file
 	# split into read and to-read
 	toread_list, read_list = parse_user_input(user_data, book_map)
 
+	# get reviews data
+	reviews = load_data(user_data)
 	# click submit to run
 	if st.button('Submit'):
 		# if the number of to-read books is less than k, only sort those books
