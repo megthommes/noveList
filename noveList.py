@@ -181,10 +181,10 @@ if upload_flag == 'Yes, upload my own Goodreads data': # upload file
 				# predict top k books
 				topk_books, bottomk_books, k = ranked_books(toread_list, read_list, reviews, k=k)
 				# show top books
-				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {} ranked books are:</span>'.format(topk_books), unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {} ranked books are:</span>'.format(len(topk_books)), unsafe_allow_html=True)
 				st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 				# show bottom books
-				st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>'.format(bottomk_books), unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>'.format(len(bottomk_books)), unsafe_allow_html=True)
 				st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 
 elif upload_flag == 'No, use pre-loaded data': # use saved file
@@ -215,10 +215,10 @@ elif upload_flag == 'No, use pre-loaded data': # use saved file
 		# predict top k books
 		topk_books, bottomk_books = ranked_books(toread_list, read_list, reviews, k=k)
 		# show top books
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {} ranked books are:</span>'.format(topk_books), unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {} ranked books are:</span>'.format(len(topk_books)), unsafe_allow_html=True)
 		st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 		# show bottom books
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>'.format(bottomk_books), unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>'.format(len(bottomk_books)), unsafe_allow_html=True)
 		st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 
 # Footer
