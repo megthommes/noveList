@@ -69,13 +69,15 @@ def read_library_csv(file_name):
 
 # function to convert user input to read/to-read
 def parse_user_input(user_data, user_id=876145):
-	# add user_id
-	user_data['user_id'] = user_id
-	# rename columns
-	user_data = user_data.rename(columns={'Book ID':'book_id', 'Rating':'rating'})
-	# split into read and to-read
-	toread_list = user_data[user_data['Shelf'] == 'to-read']
-	read_list = user_data[user_data['Shelf'] == 'read']
+	with st.spinner('Uploading csv...'):
+		# add user_id
+		user_data['user_id'] = user_id
+		# rename columns
+		user_data = user_data.rename(columns={'Book ID':'book_id', 'Rating':'rating'})
+		# split into read and to-read
+		toread_list = user_data[user_data['Shelf'] == 'to-read']
+		read_list = user_data[user_data['Shelf'] == 'read']
+	st.success('Done!')
 	return toread_list, read_list
 
 # function to train model
@@ -179,10 +181,10 @@ if upload_flag == 'Yes, upload my own Goodreads data': # upload file
 				# predict top k books
 				topk_books, bottomk_books, k = ranked_books(toread_list, read_list, reviews, k=k)
 				# show top books
-				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {topk_books} ranked books are:</span>', unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {} ranked books are:</span>'.format(topk_books), unsafe_allow_html=True)
 				st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 				# show bottom books
-				st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {bottomk_books} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>', unsafe_allow_html=True)
+				st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>'.format(bottomk_books), unsafe_allow_html=True)
 				st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 
 elif upload_flag == 'No, use pre-loaded data': # use saved file
@@ -213,10 +215,10 @@ elif upload_flag == 'No, use pre-loaded data': # use saved file
 		# predict top k books
 		topk_books, bottomk_books = ranked_books(toread_list, read_list, reviews, k=k)
 		# show top books
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {topk_books} ranked books are:</span>', unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your top {} ranked books are:</span>'.format(topk_books), unsafe_allow_html=True)
 		st.table(topk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 		# show bottom books
-		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {bottomk_books} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>', unsafe_allow_html=True)
+		st.markdown('<span style="font-size:20pt; font-style:bold;">Your bottom {} ranked books are:</span><br><span style="font-size:16pt; font-style: italic;">These books are may be ranked low because you have not read similar books</span>'.format(bottomk_books), unsafe_allow_html=True)
 		st.table(bottomk_books[['Title','Author']].style.set_properties(**{'text-align': 'left'}))
 
 # Footer
