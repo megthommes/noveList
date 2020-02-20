@@ -146,7 +146,7 @@ st.sidebar.markdown('<span style="font-size:16pt;">1. Go to [My Books](https://w
 # input
 st.markdown('<span style="font-size:20pt;">Would you like to upload a CSV of your exported Goodreads library?</span>', unsafe_allow_html=True)
 upload_flag = st.radio('Upload your Goodreads data?',
-					  ('Yes, upload my own Goodreads data','No, use pre-loaded data'), index=0)
+					  ('Yes, upload my own Goodreads data','No, use pre-loaded data'), index=1)
 
 k = 10 # number of books to rank
 if upload_flag == 'Yes, upload my own Goodreads data': # upload file
